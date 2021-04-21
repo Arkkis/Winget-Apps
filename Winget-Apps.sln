@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31205.134
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Winget-Apps", "Winget-Apps\Winget-Apps.csproj", "{4F46CD2C-EA23-4FAE-879F-2DC94918800D}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test-App", "Test-App\Test-App.csproj", "{219EF510-FE0C-4C6D-B12B-C5315E93513A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4F46CD2C-EA23-4FAE-879F-2DC94918800D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4F46CD2C-EA23-4FAE-879F-2DC94918800D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4F46CD2C-EA23-4FAE-879F-2DC94918800D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4F46CD2C-EA23-4FAE-879F-2DC94918800D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{219EF510-FE0C-4C6D-B12B-C5315E93513A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{219EF510-FE0C-4C6D-B12B-C5315E93513A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{219EF510-FE0C-4C6D-B12B-C5315E93513A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{219EF510-FE0C-4C6D-B12B-C5315E93513A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F7FB8D1A-013B-4037-852E-FC8A35FE3D62}
+	EndGlobalSection
+EndGlobal
