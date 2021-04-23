@@ -13,13 +13,15 @@ namespace Winget_Apps
 {
     public class WingetApps
     {
+        public static int GetWingetAppsTotal = 0;
+        public static int GetWingetAppsItemsDone = 0;
+
         public async Task<List<AppDto>> GetWingetApps(int cacheExpirationTimeInMinutes)
         {
             var stopwatch = new Stopwatch();
             stopwatch.Start();
 
             var cacheDirectory = $"{AppContext.BaseDirectory}cache\\";
-            var nameCachePath = $"{cacheDirectory}NameCache.txt";
             var appListCachePath = $"{cacheDirectory}AppListCache.json";
 
             if (File.Exists(appListCachePath))
@@ -47,40 +49,16 @@ namespace Winget_Apps
             var appsResponse = await GetOrLoadFromCache<TreeDto>($"https://api.github.com/repos/microsoft/winget-pkgs/git/trees/{sha}?recursive=1", $"{cacheDirectory}treelist.json");
             var apps = appsResponse.tree.Where(file => file.type == "blob").ToList();
 
+            GetWingetAppsTotal = apps.Count;
+
             var appList = new List<AppDto>();
 
             var monthExpireTimeInMinutes = 43200;
-
-            var result = new Dictionary<string, string>();
-
-            if (File.Exists(nameCachePath))
-            {
-                foreach (var line in File.ReadAllLines(nameCachePath))
-                {
-                    var keyValue = line.Split('=');
-
-                    if (keyValue.Length == 2)
-                    {
-                        result.Add(keyValue[0], keyValue[1]);
-                    }
-                }
-            }
 
             foreach (var app in apps)
             {
                 var appPath = app.path.Split("/");
                 var packageIdentifier = $"{appPath[1]}.{appPath[2]}";
-
-                if (result.ContainsKey(packageIdentifier))
-                {
-                    appList.Add(
-                            new AppDto
-                            {
-                                PackageId = packageIdentifier,
-                                Name = result[packageIdentifier]
-                            });
-                    continue;
-                }
 
                 var yamlPath = $"{cacheDirectory}{app.path.Replace("/", "\\")}";
                 var yamlResponse = await GetOrLoadFromCache<string>($"https://raw.githubusercontent.com/microsoft/winget-pkgs/master/manifests/{app.path}", yamlPath, monthExpireTimeInMinutes);
@@ -93,16 +71,12 @@ namespace Winget_Apps
                 {
                     if (!string.IsNullOrEmpty(appData["PackageIdentifier"]) && !string.IsNullOrEmpty(appData["PackageName"]))
                     {
-                        if (!result.ContainsKey(appData["PackageIdentifier"]))
-                        {
-                            result.Add(appData["PackageIdentifier"], appData["PackageName"]);
-                        }
-
                         appList.Add(
                             new AppDto
                             {
                                 PackageId = appData["PackageIdentifier"],
-                                Name = appData["PackageName"]
+                                Name = appData["PackageName"],
+                                ShortDescription = appData["ShortDescription"] ?? ""
                             });
                     }
                 }
@@ -110,12 +84,8 @@ namespace Winget_Apps
                 {
                     
                 }
-            }
 
-            using var nameCacheFile = new StreamWriter(nameCachePath);
-            foreach (var entry in result)
-            {
-                nameCacheFile.WriteLine("{0}={1}", entry.Key, entry.Value);
+                GetWingetAppsItemsDone++;
             }
 
             if (File.Exists(appListCachePath))
@@ -225,7 +195,8 @@ namespace Winget_Apps
             public string Publisher { get; set; }
             public string Name { get; set; }
             public string PackageId { get; set; }
-            public string Version { get; set; }
+
+            public string ShortDescription { get; set; }
         }
 
         public class TreeDto

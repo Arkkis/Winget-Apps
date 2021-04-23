@@ -17,34 +17,38 @@ namespace Test_App
 
         private static async Task<string> Test()
         {
-            var extractedZipPath = $"{AppContext.BaseDirectory}winget-pkgs-master";
-            var zipPath = $"{AppContext.BaseDirectory}master.zip";
             var cachePath = $"{AppContext.BaseDirectory}cache";
-
-            if (Directory.Exists(extractedZipPath))
-            {
-                Directory.Delete(extractedZipPath, true);
-            }
-
-            var webClient = new WebClient();
-            webClient.Headers.Add("User-Agent", "request");
-            webClient.DownloadFile(new Uri("https://github.com/microsoft/winget-pkgs/archive/refs/heads/master.zip"), zipPath);
-
-            ZipFile.ExtractToDirectory(zipPath, AppContext.BaseDirectory);
 
             if (!Directory.Exists(cachePath))
             {
-                Directory.Move($"{extractedZipPath}\\manifests", cachePath);
-            }
+                var extractedZipPath = $"{AppContext.BaseDirectory}winget-pkgs-master";
+                var zipPath = $"{AppContext.BaseDirectory}master.zip";
 
-            if (Directory.Exists(extractedZipPath))
-            {
-                Directory.Delete(extractedZipPath, true);
-            }
+                if (Directory.Exists(extractedZipPath))
+                {
+                    Directory.Delete(extractedZipPath, true);
+                }
 
-            if (File.Exists(zipPath))
-            {
-                File.Delete(zipPath);
+                var webClient = new WebClient();
+                webClient.Headers.Add("User-Agent", "request");
+                webClient.DownloadFile(new Uri("https://github.com/microsoft/winget-pkgs/archive/refs/heads/master.zip"), zipPath);
+
+                ZipFile.ExtractToDirectory(zipPath, AppContext.BaseDirectory);
+
+                if (!Directory.Exists(cachePath))
+                {
+                    Directory.Move($"{extractedZipPath}\\manifests", cachePath);
+                }
+
+                if (Directory.Exists(extractedZipPath))
+                {
+                    Directory.Delete(extractedZipPath, true);
+                }
+
+                if (File.Exists(zipPath))
+                {
+                    File.Delete(zipPath);
+                }
             }
 
             var wingetApps = new WingetApps();
