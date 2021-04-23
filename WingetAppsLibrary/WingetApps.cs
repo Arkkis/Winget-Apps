@@ -13,16 +13,17 @@ namespace WingetAppsLibrary
 {
     public class WingetApps
     {
-        public static int GetWingetAppsTotal;
+        public static int GetWingetAppsEstimatedTotal;
         public static int GetWingetAppsItemsDone;
 
         public async Task<List<AppDto>> GetWingetApps(int cacheExpirationTimeInMinutes)
         {
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
-
+            const int monthExpireTimeInMinutes = 43200;
             var cacheDirectory = $"{AppContext.BaseDirectory}cache\\";
             var appListCachePath = $"{cacheDirectory}AppListCache.json";
+
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
 
             if (File.Exists(appListCachePath))
             {
@@ -30,8 +31,12 @@ namespace WingetAppsLibrary
 
                 if (cachedAppList?.CreatedAt.AddMinutes(cacheExpirationTimeInMinutes) > DateTime.UtcNow)
                 {
+                    GetWingetAppsEstimatedTotal = cachedAppList.Apps.Count;
+                    GetWingetAppsItemsDone = GetWingetAppsEstimatedTotal;
+
                     stopwatch.Stop();
                     Console.WriteLine($"Time elapsed: {stopwatch.ElapsedMilliseconds}ms");
+                    
                     return cachedAppList.Apps;
                 }
             }
@@ -45,13 +50,31 @@ namespace WingetAppsLibrary
             }
 
             var appsResponse = await GetOrLoadFromCache<TreeDto>($"https://api.github.com/repos/microsoft/winget-pkgs/git/trees/{sha}?recursive=1", $"{cacheDirectory}treelist.json");
-            var apps = appsResponse.tree.Where(file => file.type == "blob").ToList();
 
-            GetWingetAppsTotal = apps.Count;
+            var apps = new List<FileDto>();
+            var packageNames = new List<string>();
+
+            foreach (var app in appsResponse.tree)
+            {
+                if (app.type != "blob")
+                {
+                    continue;
+                }
+
+                var path = app.path.Split("/");
+
+                if (packageNames.Contains(path[2]))
+                {
+                    continue;
+                }
+
+                packageNames.Add(path[2]);
+                apps.Add(app);
+            }
+
+            GetWingetAppsEstimatedTotal = apps.Count;
 
             var appList = new List<AppDto>();
-
-            const int monthExpireTimeInMinutes = 43200;
 
             foreach (var app in apps)
             {

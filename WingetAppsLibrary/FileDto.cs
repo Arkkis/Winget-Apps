@@ -4,10 +4,10 @@ namespace WingetAppsLibrary
 {
     [SuppressMessage("ReSharper", "InconsistentNaming")]
     [SuppressMessage("ReSharper", "UnassignedGetOnlyAutoProperty")]
-    public abstract class FileDto
+    public class FileDto
     {
-        public string path { get; }
-        public string sha { get; }
-        public string type { get; }
+        public string path { get; init; }
+        public string sha { get; init; }
+        public string type { get; init; }
     }
 }

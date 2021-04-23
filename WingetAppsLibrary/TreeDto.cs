@@ -7,6 +7,6 @@ namespace WingetAppsLibrary
     [SuppressMessage("ReSharper", "UnassignedGetOnlyAutoProperty")]
     public class TreeDto
     {
-        public IEnumerable<FileDto> tree { get; }
+        public IEnumerable<FileDto> tree { get; init; }
     }
 }

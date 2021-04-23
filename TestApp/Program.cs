@@ -53,7 +53,7 @@ namespace TestApp
 
             var wingetApps = new WingetApps();
 
-            var test = await wingetApps.GetWingetApps(60 * 24);
+            var test = await wingetApps.GetWingetApps(60 * 24 * 30);
             var appCount = 0;
 
             // Getting disctinct items by Id with GroupBy
