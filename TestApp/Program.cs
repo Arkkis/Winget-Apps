@@ -3,10 +3,10 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
-using Winget_Apps;
+using WingetAppsLibrary;
 using System.IO.Compression;
 
-namespace Test_App
+namespace TestApp
 {
     class Program
     {

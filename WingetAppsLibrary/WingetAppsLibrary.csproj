@@ -2,7 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
-    <RootNamespace>Winget_Apps</RootNamespace>
+    <RootNamespace>WingetAppsLibrary</RootNamespace>
+    <AssemblyName>WingetAppsLibrary</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>

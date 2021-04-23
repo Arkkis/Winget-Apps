@@ -3,11 +3,12 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net5.0</TargetFramework>
-    <RootNamespace>Test_App</RootNamespace>
+    <RootNamespace>TestApp</RootNamespace>
+    <AssemblyName>TestApp</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Winget-Apps\Winget-Apps.csproj" />
+    <ProjectReference Include="..\WingetAppsLibrary\WingetAppsLibrary.csproj" />
   </ItemGroup>
 
 </Project>
