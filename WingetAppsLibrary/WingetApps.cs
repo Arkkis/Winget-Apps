@@ -99,7 +99,7 @@ namespace WingetAppsLibrary
             return appList;
         }
 
-        private async Task<List<AppDto>> CreateAppList(List<FileDto> apps)
+        private static async Task<List<AppDto>> CreateAppList(List<FileDto> apps)
         {
             var appList = new List<AppDto>();
 
@@ -117,13 +117,16 @@ namespace WingetAppsLibrary
 
                 var appData = deserializer.Deserialize<PackageYamlDto>(yamlResponse);
 
-                appList.Add(
+                if (!string.IsNullOrEmpty(appData.PackageIdentifier) && !string.IsNullOrEmpty(appData.PackageName))
+                {
+                    appList.Add(
                             new AppDto
                             {
                                 PackageId = appData.PackageIdentifier,
                                 Name = appData.PackageName,
                                 ShortDescription = appData.ShortDescription
                             });
+                }
 
                 GetWingetAppsItemsDone++;
             }
@@ -134,7 +137,7 @@ namespace WingetAppsLibrary
             return appList;
         }
 
-        private async Task<T> GetOrLoadFromCache<T>(string url, string cacheFile)
+        private static async Task<T> GetOrLoadFromCache<T>(string url, string cacheFile)
         {
             var cacheDirectory = Path.GetDirectoryName(cacheFile);
 
