@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using YamlDotNet.Serialization;
@@ -15,12 +14,14 @@ namespace WingetAppsLibrary
     {
         public static int GetWingetAppsEstimatedTotal;
         public static int GetWingetAppsItemsDone;
+        public static string cacheDirectory;
+        public static string appListCachePath;
+        private const int monthExpireTimeInMinutes = 43200;
 
         public async Task<List<AppDto>> GetWingetApps(int cacheExpirationTimeInMinutes)
         {
-            const int monthExpireTimeInMinutes = 43200;
-            var cacheDirectory = $"{AppContext.BaseDirectory}cache\\";
-            var appListCachePath = $"{cacheDirectory}AppListCache.json";
+            cacheDirectory = $"{AppContext.BaseDirectory}cache\\";
+            appListCachePath = $"{cacheDirectory}AppListCache.json";
 
             var stopwatch = new Stopwatch();
             stopwatch.Start();
@@ -35,7 +36,7 @@ namespace WingetAppsLibrary
                     GetWingetAppsItemsDone = GetWingetAppsEstimatedTotal;
 
                     stopwatch.Stop();
-                    Console.WriteLine($"Time elapsed: {stopwatch.ElapsedMilliseconds}ms");
+                    Console.WriteLine($"Time elapsed loading appList from cache: {stopwatch.ElapsedMilliseconds}ms");
                     
                     return cachedAppList.Apps;
                 }
@@ -53,6 +54,9 @@ namespace WingetAppsLibrary
 
             var apps = new List<FileDto>();
             var packageNames = new List<string>();
+
+            Console.WriteLine($"Time elapsed with loading file tree: {stopwatch.ElapsedMilliseconds}ms");
+            stopwatch.Restart();
 
             foreach (var app in appsResponse.tree)
             {
@@ -72,39 +76,15 @@ namespace WingetAppsLibrary
                 apps.Add(app);
             }
 
+            Console.WriteLine($"Time elapsed checking packageNames: {stopwatch.ElapsedMilliseconds}ms");
+            stopwatch.Restart();
+
             GetWingetAppsEstimatedTotal = apps.Count;
 
-            var appList = new List<AppDto>();
+            var appList = await CreateAppList(apps);
 
-            foreach (var app in apps)
-            {
-                var yamlPath = $"{cacheDirectory}{app.path.Replace("/", "\\")}";
-                var yamlResponse = await GetOrLoadFromCache<string>($"https://raw.githubusercontent.com/microsoft/winget-pkgs/master/manifests/{app.path}", yamlPath, monthExpireTimeInMinutes);
-
-                var stringReader = new StringReader(yamlResponse);
-                var deserializer = new Deserializer();
-                var appData = deserializer.Deserialize<dynamic>(stringReader);
-
-                try
-                {
-                    if (!string.IsNullOrEmpty(appData["PackageIdentifier"]) && !string.IsNullOrEmpty(appData["PackageName"]))
-                    {
-                        appList.Add(
-                            new AppDto
-                            {
-                                PackageId = appData["PackageIdentifier"],
-                                Name = appData["PackageName"],
-                                ShortDescription = appData["ShortDescription"] ?? ""
-                            });
-                    }
-                }
-                catch (Exception)
-                {
-                    // ignored
-                }
-
-                GetWingetAppsItemsDone++;
-            }
+            Console.WriteLine($"Time elapsed creating appList: {stopwatch.ElapsedMilliseconds}ms");
+            stopwatch.Restart();
 
             if (File.Exists(appListCachePath))
             {
@@ -119,11 +99,44 @@ namespace WingetAppsLibrary
             return appList;
         }
 
-        private async Task<T> GetOrLoadFromCache<T>(string url, string cacheFile, int expireTimeInMinutes = 60)
+        private async Task<List<AppDto>> CreateAppList(List<FileDto> apps)
         {
-            var response = "";
+            var appList = new List<AppDto>();
+
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
+
+            foreach (var app in apps)
+            {
+                var yamlPath = $"{cacheDirectory}{app.path.Replace("/", "\\")}";
+                var yamlResponse = await GetOrLoadFromCache<string>($"https://raw.githubusercontent.com/microsoft/winget-pkgs/master/manifests/{app.path}", yamlPath);
+
+                var deserializer = new DeserializerBuilder()
+                    .IgnoreUnmatchedProperties()
+                    .Build();
+
+                var appData = deserializer.Deserialize<PackageYamlDto>(yamlResponse);
+
+                appList.Add(
+                            new AppDto
+                            {
+                                PackageId = appData.PackageIdentifier,
+                                Name = appData.PackageName,
+                                ShortDescription = appData.ShortDescription
+                            });
+
+                GetWingetAppsItemsDone++;
+            }
+
+            stopwatch.Stop();
+            Console.WriteLine($"Time elapsed in CreateAppList: {stopwatch.ElapsedMilliseconds}ms");
+
+            return appList;
+        }
+
+        private async Task<T> GetOrLoadFromCache<T>(string url, string cacheFile)
+        {
             var cacheDirectory = Path.GetDirectoryName(cacheFile);
-            var cacheInvalidated = false;
 
             if (cacheDirectory != null && !Directory.Exists(cacheDirectory))
             {
@@ -137,49 +150,28 @@ namespace WingetAppsLibrary
                     return (T)Convert.ChangeType(File.ReadAllText(cacheFile), typeof(T));
                 }
 
-                var cachedFile = JsonSerializer.Deserialize<CachedFile>(File.ReadAllText(cacheFile));
-
-                if (cachedFile?.CreatedAt.AddMinutes(expireTimeInMinutes) > DateTime.UtcNow)
-                {
-                    response = Encoding.UTF8.GetString(Convert.FromBase64String(cachedFile.Content));
-                }
-                else
-                {
-                    cacheInvalidated = true;
-                }
+                return JsonSerializer.Deserialize<T>(File.ReadAllText(cacheFile));
             }
-            else
+
+            var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Add("User-Agent", "request");
+            var response = await httpClient.GetStringAsync(url);
+
+            var fileDirectory = Path.GetDirectoryName(cacheFile);
+
+            if (fileDirectory != null && !Directory.Exists(fileDirectory))
             {
-                cacheInvalidated = true;
+                Directory.CreateDirectory(fileDirectory);
             }
 
-            if (cacheInvalidated)
-            {
-                var httpClient = new HttpClient();
-                httpClient.DefaultRequestHeaders.Add("User-Agent", "request");
-                response = await httpClient.GetStringAsync(url);
-
-                var cachedFile = new CachedFile { CreatedAt = DateTime.UtcNow, Content = Convert.ToBase64String(Encoding.UTF8.GetBytes(response)) };
-
-                var fileDirectory = Path.GetDirectoryName(cacheFile);
-
-                if (fileDirectory != null && !Directory.Exists(fileDirectory))
-                {
-                    Directory.CreateDirectory(fileDirectory);
-                }
-
-                File.WriteAllText(cacheFile, JsonSerializer.Serialize(cachedFile));
-
-                await Task.Delay(1000);
-            }
+            File.WriteAllText(cacheFile, response);
 
             if (typeof(T) == typeof(string))
             {
                 return (T)Convert.ChangeType(response, typeof(T));
             }
 
-            var responseDto = JsonSerializer.Deserialize<T>(response);
-            return responseDto;
+            return JsonSerializer.Deserialize<T>(response);
         }
     }
 }
