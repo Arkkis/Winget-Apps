@@ -6,7 +6,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
-using YamlDotNet.Serialization;
 
 namespace WingetAppsLibrary
 {
@@ -14,9 +13,8 @@ namespace WingetAppsLibrary
     {
         public static int GetWingetAppsEstimatedTotal;
         public static int GetWingetAppsItemsDone;
-        public static string cacheDirectory;
-        public static string appListCachePath;
-        private const int monthExpireTimeInMinutes = 43200;
+        public static string? cacheDirectory;
+        public static string? appListCachePath;
 
         public async Task<List<AppDto>> GetWingetApps(int cacheExpirationTimeInMinutes)
         {
@@ -111,20 +109,31 @@ namespace WingetAppsLibrary
                 var yamlPath = $"{cacheDirectory}{app.path.Replace("/", "\\")}";
                 var yamlResponse = await GetOrLoadFromCache<string>($"https://raw.githubusercontent.com/microsoft/winget-pkgs/master/manifests/{app.path}", yamlPath);
 
-                var deserializer = new DeserializerBuilder()
-                    .IgnoreUnmatchedProperties()
-                    .Build();
+                var dict = new Dictionary<string, string>();
 
-                var appData = deserializer.Deserialize<PackageYamlDto>(yamlResponse);
+                foreach (var line in yamlResponse.Split(new[] { '\r', '\n' }))
+                {
+                    var split = line.Split(": ");
 
-                if (!string.IsNullOrEmpty(appData.PackageIdentifier) && !string.IsNullOrEmpty(appData.PackageName))
+                    if (split.Length == 2 && !dict.ContainsKey(split[0]))
+                    {
+                        dict.Add(split[0], split[1]);
+                    }
+
+                    if (dict.ContainsKey("PackageIdentifier") && dict.ContainsKey("PackageName") && dict.ContainsKey("ShortDescription"))
+                    {
+                        break;
+                    }
+                }
+
+                if (dict.ContainsKey("PackageIdentifier") && dict.ContainsKey("PackageName"))
                 {
                     appList.Add(
                             new AppDto
                             {
-                                PackageId = appData.PackageIdentifier,
-                                Name = appData.PackageName,
-                                ShortDescription = appData.ShortDescription
+                                PackageId = dict["PackageIdentifier"],
+                                Name = dict["PackageName"],
+                                ShortDescription = dict.ContainsKey("ShortDescription") ? dict["ShortDescription"] : ""
                             });
                 }
 
